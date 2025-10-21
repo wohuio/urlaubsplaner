@@ -28,8 +28,10 @@ export default {
           options: {
             item: {
               id: { label: 'ID', type: 'Text' },
-              vorname: { label: 'Vorname', type: 'Text' },
-              nachname: { label: 'Nachname', type: 'Text' },
+              vorname: { label: 'Vorname (oder firstName)', type: 'Text' },
+              nachname: { label: 'Nachname (oder lastName)', type: 'Text' },
+              firstName: { label: 'First Name (EN)', type: 'Text' },
+              lastName: { label: 'Last Name (EN)', type: 'Text' },
               email: { label: 'E-Mail', type: 'Text' },
               urlaube: {
                 label: 'Urlaube (verschachtelt)',

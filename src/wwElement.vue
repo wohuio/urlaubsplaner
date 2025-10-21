@@ -125,23 +125,28 @@ export default {
     verarbeitete_mitarbeiter() {
       const liste = this.content?.benutzer_liste || [];
       return liste.map(m => {
+        // Automatisches Mapping: firstName → vorname, lastName → nachname
+        const vorname = m.vorname || m.firstName || '';
+        const nachname = m.nachname || m.lastName || '';
+        const email = m.email || '';
+
         // Anzeigename: Vorname + Nachname, sonst E-Mail, sonst "Unbekannt"
         let anzeigename = 'Unbekannt';
-        if (m.vorname && m.nachname) {
-          anzeigename = `${m.vorname} ${m.nachname}`;
-        } else if (m.vorname) {
-          anzeigename = m.vorname;
-        } else if (m.nachname) {
-          anzeigename = m.nachname;
-        } else if (m.email) {
-          anzeigename = m.email;
+        if (vorname && nachname) {
+          anzeigename = `${vorname} ${nachname}`;
+        } else if (vorname) {
+          anzeigename = vorname;
+        } else if (nachname) {
+          anzeigename = nachname;
+        } else if (email) {
+          anzeigename = email;
         }
 
         return {
           id: m.id || `m-${Date.now()}-${Math.random()}`,
-          vorname: m.vorname || '',
-          nachname: m.nachname || '',
-          email: m.email || '',
+          vorname: vorname,
+          nachname: nachname,
+          email: email,
           anzeigename: anzeigename,
           urlaube: m.urlaube || [],
           original: m
