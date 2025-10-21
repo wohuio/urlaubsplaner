@@ -516,24 +516,29 @@ export default {
 
 .monat-select,
 .jahr-select {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #333;
+  color: var(--navigation-textfarbe);
   padding: 8px 12px;
   border-radius: 4px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: normal;
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover {
-    background: rgba(255, 255, 255, 1);
+    background: rgba(255, 255, 255, 0.3);
   }
 
   &:focus {
     outline: none;
-    border-color: rgba(255, 255, 255, 0.5);
-    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  // Dropdown-Optionen (wenn geöffnet)
+  option {
+    background: #fff;
+    color: #333;
   }
 }
 
