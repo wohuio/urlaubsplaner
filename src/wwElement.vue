@@ -248,10 +248,10 @@ export default {
     },
 
     verfuegbare_jahre() {
-      // Generiert Jahre von aktuelles Jahr - 2 bis + 5
+      // Generiert Jahre von aktuelles Jahr - 2 bis 2060
       const aktuelles_jahr = new Date().getFullYear();
       const jahre = [];
-      for (let jahr = aktuelles_jahr - 2; jahr <= aktuelles_jahr + 5; jahr++) {
+      for (let jahr = aktuelles_jahr - 2; jahr <= 2060; jahr++) {
         jahre.push(jahr);
       }
       return jahre;
