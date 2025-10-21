@@ -124,13 +124,29 @@ export default {
 
     verarbeitete_mitarbeiter() {
       const liste = this.content?.benutzer_liste || [];
-      return liste.map(m => ({
-        id: m.id || `m-${Date.now()}-${Math.random()}`,
-        email: m.email || 'Unbekannt',
-        anzeigename: m.email || 'Unbekannt',
-        urlaube: m.urlaube || [],
-        original: m
-      }));
+      return liste.map(m => {
+        // Anzeigename: Vorname + Nachname, sonst E-Mail, sonst "Unbekannt"
+        let anzeigename = 'Unbekannt';
+        if (m.vorname && m.nachname) {
+          anzeigename = `${m.vorname} ${m.nachname}`;
+        } else if (m.vorname) {
+          anzeigename = m.vorname;
+        } else if (m.nachname) {
+          anzeigename = m.nachname;
+        } else if (m.email) {
+          anzeigename = m.email;
+        }
+
+        return {
+          id: m.id || `m-${Date.now()}-${Math.random()}`,
+          vorname: m.vorname || '',
+          nachname: m.nachname || '',
+          email: m.email || '',
+          anzeigename: anzeigename,
+          urlaube: m.urlaube || [],
+          original: m
+        };
+      });
     },
 
     verarbeitete_urlaube() {
@@ -298,7 +314,10 @@ export default {
           event: {
             employee: m.original,
             employeeId: m.id,
-            employeeName: m.email,
+            employeeName: m.anzeigename,
+            employeeFirstName: m.vorname,
+            employeeLastName: m.nachname,
+            employeeEmail: m.email,
             startDate: ss,
             endDate: es,
             dayCount: dc
@@ -325,7 +344,10 @@ export default {
           vacation: u.original,
           employee: m.original,
           employeeId: m.id,
-          employeeName: m.email,
+          employeeName: m.anzeigename,
+          employeeFirstName: m.vorname,
+          employeeLastName: m.nachname,
+          employeeEmail: m.email,
           startDate: u.startdatum,
           endDate: u.enddatum,
           type: u.typ,

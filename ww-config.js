@@ -10,21 +10,26 @@ export default {
       section: 'settings',
       bindable: true,
       defaultValue: [
-        { id: 1, email: 'max.mustermann@firma.de' },
-        { id: 2, email: 'anna.schmidt@firma.de' },
-        { id: 3, email: 'peter.mueller@firma.de' }
+        { id: 1, vorname: 'Max', nachname: 'Mustermann', email: 'max.mustermann@firma.de' },
+        { id: 2, vorname: 'Anna', nachname: 'Schmidt', email: 'anna.schmidt@firma.de' },
+        { id: 3, vorname: 'Peter', nachname: 'Mueller', email: 'peter.mueller@firma.de' }
       ],
       options: {
         expandable: true,
         getItemLabel(item) {
-          return item.email || item.name || `Benutzer ${item.id || 'Unbekannt'}`;
+          if (item.vorname && item.nachname) {
+            return `${item.vorname} ${item.nachname}`;
+          }
+          return item.email || `Benutzer ${item.id || 'Unbekannt'}`;
         },
         item: {
           type: 'Object',
-          defaultValue: { id: 1, email: 'benutzer@firma.de' },
+          defaultValue: { id: 1, vorname: 'Max', nachname: 'Mustermann', email: 'benutzer@firma.de' },
           options: {
             item: {
               id: { label: 'ID', type: 'Text' },
+              vorname: { label: 'Vorname', type: 'Text' },
+              nachname: { label: 'Nachname', type: 'Text' },
               email: { label: 'E-Mail', type: 'Text' },
               urlaube: {
                 label: 'Urlaube (verschachtelt)',
@@ -298,6 +303,9 @@ export default {
         employee: {},
         employeeId: 0,
         employeeName: '',
+        employeeFirstName: '',
+        employeeLastName: '',
+        employeeEmail: '',
         startDate: '',
         endDate: '',
         dayCount: 0
@@ -311,6 +319,9 @@ export default {
         employee: {},
         employeeId: 0,
         employeeName: '',
+        employeeFirstName: '',
+        employeeLastName: '',
+        employeeEmail: '',
         startDate: '',
         endDate: '',
         type: '',
