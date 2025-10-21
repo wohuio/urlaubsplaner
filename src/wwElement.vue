@@ -36,7 +36,7 @@
           v-for="datum in alle_datum_zellen"
           :key="datum.datum_string"
           class="datum-header"
-          :class="{ 'wochenende': datum.ist_wochenende }"
+          :class="{ 'wochenende': datum.ist_wochenende, 'feiertag': datum.ist_feiertag }"
         >
           <div class="datum-tag">{{ datum.tag_name }}</div>
           <div class="datum-nummer">{{ datum.tag_nummer }}</div>
@@ -62,6 +62,7 @@
             class="datums-zelle"
             :class="{
               'wochenende': datum.ist_wochenende,
+              'feiertag': datum.ist_feiertag,
               'auswahlbar': !datum.ist_wochenende || content.wochenenden_anzeigen
             }"
             @mousedown="start_auswahl(mitarbeiter, datum)"
@@ -221,13 +222,17 @@ export default {
 
       let current = new Date(start);
       while (current < end_date) {
+        const datum_string = this.format_datum(current);
         const ist_wochenende = current.getDay() === 0 || current.getDay() === 6;
+        const ist_feiertag = this.ist_feiertag(datum_string);
+
         if (!ist_wochenende || this.content?.wochenenden_anzeigen) {
           zellen.push({
-            datum_string: this.format_datum(current),
+            datum_string: datum_string,
             tag_name: this.translations.days[current.getDay()],
             tag_nummer: current.getDate(),
-            ist_wochenende
+            ist_wochenende,
+            ist_feiertag
           });
         }
         current.setDate(current.getDate() + 1);
@@ -276,6 +281,103 @@ export default {
     },
   },
   methods: {
+    // Berechnet Feiertage für Baden-Württemberg für ein bestimmtes Jahr
+    berechne_feiertage(jahr) {
+      const feiertage = [];
+
+      // Feste Feiertage
+      feiertage.push(`${jahr}-01-01`); // Neujahr
+      feiertage.push(`${jahr}-01-06`); // Heilige Drei Könige
+      feiertage.push(`${jahr}-05-01`); // Tag der Arbeit
+      feiertage.push(`${jahr}-10-03`); // Tag der Deutschen Einheit
+      feiertage.push(`${jahr}-11-01`); // Allerheiligen
+      feiertage.push(`${jahr}-12-25`); // 1. Weihnachtsfeiertag
+      feiertage.push(`${jahr}-12-26`); // 2. Weihnachtsfeiertag
+
+      // Bewegliche Feiertage (basierend auf Ostersonntag)
+      const ostersonntag = this.berechne_ostersonntag(jahr);
+
+      // Karfreitag (2 Tage vor Ostersonntag)
+      const karfreitag = new Date(ostersonntag);
+      karfreitag.setDate(karfreitag.getDate() - 2);
+      feiertage.push(this.format_datum(karfreitag));
+
+      // Ostermontag (1 Tag nach Ostersonntag)
+      const ostermontag = new Date(ostersonntag);
+      ostermontag.setDate(ostermontag.getDate() + 1);
+      feiertage.push(this.format_datum(ostermontag));
+
+      // Christi Himmelfahrt (39 Tage nach Ostersonntag)
+      const christi_himmelfahrt = new Date(ostersonntag);
+      christi_himmelfahrt.setDate(christi_himmelfahrt.getDate() + 39);
+      feiertage.push(this.format_datum(christi_himmelfahrt));
+
+      // Pfingstmontag (50 Tage nach Ostersonntag)
+      const pfingstmontag = new Date(ostersonntag);
+      pfingstmontag.setDate(pfingstmontag.getDate() + 50);
+      feiertage.push(this.format_datum(pfingstmontag));
+
+      // Fronleichnam (60 Tage nach Ostersonntag)
+      const fronleichnam = new Date(ostersonntag);
+      fronleichnam.setDate(fronleichnam.getDate() + 60);
+      feiertage.push(this.format_datum(fronleichnam));
+
+      return feiertage;
+    },
+
+    // Berechnet Ostersonntag nach Gauß'scher Osterformel
+    berechne_ostersonntag(jahr) {
+      const a = jahr % 19;
+      const b = Math.floor(jahr / 100);
+      const c = jahr % 100;
+      const d = Math.floor(b / 4);
+      const e = b % 4;
+      const f = Math.floor((b + 8) / 25);
+      const g = Math.floor((b - f + 1) / 3);
+      const h = (19 * a + b - d - g + 15) % 30;
+      const i = Math.floor(c / 4);
+      const k = c % 4;
+      const l = (32 + 2 * e + 2 * i - h - k) % 7;
+      const m = Math.floor((a + 11 * h + 22 * l) / 451);
+      const monat = Math.floor((h + l - 7 * m + 114) / 31);
+      const tag = ((h + l - 7 * m + 114) % 31) + 1;
+      return new Date(jahr, monat - 1, tag);
+    },
+
+    // Prüft, ob ein Datum ein Feiertag ist
+    ist_feiertag(datum_string) {
+      if (!datum_string) return false;
+      const jahr = parseInt(datum_string.split('-')[0]);
+      const feiertage = this.berechne_feiertage(jahr);
+      return feiertage.includes(datum_string);
+    },
+
+    // Zählt Arbeitstage zwischen zwei Daten (ohne Wochenenden und Feiertage)
+    zaehle_arbeitstage(start_datum_string, end_datum_string) {
+      const start = this.parse_datum(start_datum_string);
+      const end = this.parse_datum(end_datum_string);
+      if (!start || !end) return 0;
+
+      let count = 0;
+      let current = new Date(start);
+
+      while (current <= end) {
+        const datum_string = this.format_datum(current);
+        const wochentag = current.getDay();
+        const ist_wochenende = wochentag === 0 || wochentag === 6;
+        const ist_feiertag = this.ist_feiertag(datum_string);
+
+        // Nur zählen wenn es kein Wochenende und kein Feiertag ist
+        if (!ist_wochenende && !ist_feiertag) {
+          count++;
+        }
+
+        current.setDate(current.getDate() + 1);
+      }
+
+      return count;
+    },
+
     // Normalisiert typ-Werte (DE/EN → DE)
     normalize_typ(typ) {
       if (!typ) return 'urlaub';
@@ -380,9 +482,8 @@ export default {
       const m = this.auswahl_mitarbeiter;
       if (s && e && m) {
         const [ss, es] = s <= e ? [s, e] : [e, s];
-        const sd = this.parse_datum(ss);
-        const ed = this.parse_datum(es);
-        const dc = Math.ceil((ed - sd) / (1000 * 60 * 60 * 24)) + 1;
+        // Berechne Arbeitstage (ohne Wochenenden und Feiertage)
+        const dc = this.zaehle_arbeitstage(ss, es);
         this.$emit('trigger-event', {
           name: 'bei_datumsbereich_auswahl',
           event: {
@@ -590,6 +691,14 @@ export default {
   &.wochenende {
     background-color: #f1f3f5;
   }
+
+  &.feiertag {
+    background-color: #ffe3e3;
+    .datum-tag, .datum-nummer {
+      color: #c92a2a;
+      font-weight: 600;
+    }
+  }
 }
 
 .datum-tag {
@@ -638,6 +747,11 @@ export default {
 
   &.wochenende {
     background-color: #f8f9fa;
+  }
+
+  &.feiertag {
+    background-color: #fff5f5;
+    border-left: 2px solid #ffc9c9;
   }
 
   &.auswahlbar {
