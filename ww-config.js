@@ -182,6 +182,14 @@ export default {
       bindable: true
     },
 
+    feiertag_farbe: {
+      label: 'Feiertag',
+      type: 'Color',
+      section: 'style',
+      defaultValue: '#ffe3e3',
+      bindable: true
+    },
+
     hintergrundfarbe: {
       label: 'Hintergrundfarbe',
       type: 'Color',

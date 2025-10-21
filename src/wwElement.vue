@@ -268,6 +268,7 @@ export default {
         '--kopfzeile-hintergrund': this.content?.kopfzeile_hintergrundfarbe || '#f8f9fa',
         '--navigation-hintergrund': this.content?.navigation_hintergrundfarbe || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         '--navigation-textfarbe': this.content?.navigation_textfarbe || '#ffffff',
+        '--feiertag-farbe': this.content?.feiertag_farbe || '#ffe3e3',
         '--rahmen-radius': this.content?.rahmen_radius || '4px',
         '--header-textfarbe': this.content?.header_textfarbe || '#333333',
         '--header-schriftgroesse': this.content?.header_schriftgroesse || '14px',
@@ -693,7 +694,7 @@ export default {
   }
 
   &.feiertag {
-    background-color: #ffe3e3;
+    background-color: var(--feiertag-farbe);
     .datum-tag, .datum-nummer {
       color: #c92a2a;
       font-weight: 600;
@@ -750,8 +751,9 @@ export default {
   }
 
   &.feiertag {
-    background-color: #fff5f5;
-    border-left: 2px solid #ffc9c9;
+    background-color: var(--feiertag-farbe);
+    opacity: 0.5;
+    border-left: 2px solid var(--feiertag-farbe);
   }
 
   &.auswahlbar {
