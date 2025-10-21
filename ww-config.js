@@ -183,10 +183,26 @@ export default {
     },
 
     feiertag_farbe: {
-      label: 'Feiertag',
+      label: 'Feiertag Hintergrund',
       type: 'Color',
       section: 'style',
       defaultValue: '#ffe3e3',
+      bindable: true
+    },
+
+    feiertag_textfarbe: {
+      label: 'Feiertag Textfarbe',
+      type: 'Color',
+      section: 'style',
+      defaultValue: '#c92a2a',
+      bindable: true
+    },
+
+    feiertag_rahmenfarbe: {
+      label: 'Feiertag Rahmen',
+      type: 'Color',
+      section: 'style',
+      defaultValue: '#ffc9c9',
       bindable: true
     },
 
