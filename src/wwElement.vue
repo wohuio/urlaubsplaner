@@ -105,6 +105,9 @@ export default {
           krank: 'Krank',
           geschaeftsreise: 'Geschäftsreise',
           fortbildung: 'Fortbildung',
+          sonderurlaub: 'Sonderurlaub',
+          elternzeit: 'Elternzeit',
+          homeoffice: 'Homeoffice',
           months: ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'],
           days: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
         },
@@ -115,6 +118,9 @@ export default {
           krank: 'Sick',
           geschaeftsreise: 'Business Trip',
           fortbildung: 'Training',
+          sonderurlaub: 'Special Leave',
+          elternzeit: 'Parental Leave',
+          homeoffice: 'Home Office',
           months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
           days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
         }
@@ -161,8 +167,8 @@ export default {
         benutzer_id: u.benutzer_id || u.user_id, // Automatisches Mapping: user_id → benutzer_id
         startdatum: u.startdatum,
         enddatum: u.enddatum,
-        typ: u.typ || 'urlaub',
-        status: u.status || 'ausstehend',
+        typ: this.normalize_typ(u.typ),
+        status: this.normalize_status(u.status),
         original: u
       }));
     },
@@ -177,8 +183,8 @@ export default {
               benutzer_id: m.id,
               startdatum: u.startdatum,
               enddatum: u.enddatum,
-              typ: u.typ || 'urlaub',
-              status: u.status || 'ausstehend',
+              typ: this.normalize_typ(u.typ),
+              status: this.normalize_status(u.status),
               original: u
             });
           });
@@ -244,6 +250,43 @@ export default {
     },
   },
   methods: {
+    // Normalisiert typ-Werte (DE/EN → DE)
+    normalize_typ(typ) {
+      if (!typ) return 'urlaub';
+      const normalized = typ.toLowerCase();
+      const mapping = {
+        // Deutsche Werte
+        'urlaub': 'urlaub',
+        'krank': 'krank',
+        'geschaeftsreise': 'geschaeftsreise',
+        'fortbildung': 'fortbildung',
+        // Englische Werte
+        'vacation': 'urlaub',
+        'sick': 'krank',
+        'sonderurlaub': 'sonderurlaub',
+        'elternzeit': 'elternzeit',
+        'homeoffice': 'homeoffice'
+      };
+      return mapping[normalized] || normalized;
+    },
+    // Normalisiert status-Werte (DE/EN → DE)
+    normalize_status(status) {
+      if (!status) return 'ausstehend';
+      const normalized = status.toLowerCase();
+      const mapping = {
+        // Deutsche Werte
+        'ausstehend': 'ausstehend',
+        'genehmigt': 'genehmigt',
+        'abgelehnt': 'abgelehnt',
+        'krank': 'krank',
+        // Englische Werte
+        'pending': 'ausstehend',
+        'approved': 'genehmigt',
+        'rejected': 'abgelehnt',
+        'sick': 'krank'
+      };
+      return mapping[normalized] || normalized;
+    },
     parse_datum(s) {
       if (!s) return null;
       const p = s.split('-');
