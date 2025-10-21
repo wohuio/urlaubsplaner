@@ -85,7 +85,8 @@ export default {
           options: {
             item: {
               id: { label: 'Urlaub ID', type: 'Text' },
-              benutzer_id: { label: 'Benutzer ID', type: 'Text' },
+              benutzer_id: { label: 'Benutzer ID (oder user_id)', type: 'Text' },
+              user_id: { label: 'User ID (EN)', type: 'Text' },
               startdatum: { label: 'Startdatum', type: 'Text' },
               enddatum: { label: 'Enddatum', type: 'Text' },
               typ: { label: 'Typ', type: 'Text' },

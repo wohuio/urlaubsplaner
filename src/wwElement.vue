@@ -158,7 +158,7 @@ export default {
       const urlaube = this.content?.urlaubsdaten || [];
       return urlaube.map(u => ({
         id: u.id || `u-${Date.now()}-${Math.random()}`,
-        benutzer_id: u.benutzer_id,
+        benutzer_id: u.benutzer_id || u.user_id, // Automatisches Mapping: user_id → benutzer_id
         startdatum: u.startdatum,
         enddatum: u.enddatum,
         typ: u.typ || 'urlaub',
