@@ -1,0 +1,21 @@
+{
+  "name": "Urlaubsplaner",
+  "displayName": "Urlaubsplaner",
+  "description": "Ein Urlaubsplaner für Teams mit Kalenderansicht, Drag-to-Select und vollständiger Anpassung",
+  "version": "1.0.0",
+  "author": "wohu.io",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wohuio/urlaubsplaner.git"
+  },
+  "keywords": [
+    "urlaubsplaner",
+    "vacation planner",
+    "calendar",
+    "kalender",
+    "team management"
+  ],
+  "icon": "calendar",
+  "category": "Business"
+}

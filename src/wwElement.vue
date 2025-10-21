@@ -1,0 +1,544 @@
+<template>
+  <div class="urlaubsplaner" :style="dynamicStyles">
+    <!-- Navigation -->
+    <div v-if="content.navigation_anzeigen" class="urlaubsplaner-navigation">
+      <button @click="vorheriger_monat" class="nav-button">
+        ◀ {{ translations.previous }}
+      </button>
+      <div class="aktueller_zeitraum">
+        {{ aktueller_zeitraum_text }}
+      </div>
+      <button @click="naechster_monat" class="nav-button">
+        {{ translations.next }} ▶
+      </button>
+    </div>
+
+    <!-- Kalender Container -->
+    <div class="kalender-container">
+      <!-- Kopfzeile mit Datum -->
+      <div class="kopfzeile">
+        <div class="ecke"></div>
+        <div
+          v-for="datum in alle_datum_zellen"
+          :key="datum.datum_string"
+          class="datum-header"
+          :class="{ 'wochenende': datum.ist_wochenende }"
+        >
+          <div class="datum-tag">{{ datum.tag_name }}</div>
+          <div class="datum-nummer">{{ datum.tag_nummer }}</div>
+        </div>
+      </div>
+
+      <!-- Mitarbeiter-Zeilen -->
+      <div class="kalender-body">
+        <div
+          v-for="mitarbeiter in verarbeitete_mitarbeiter"
+          :key="mitarbeiter.id"
+          class="mitarbeiter-zeile"
+        >
+          <!-- Mitarbeiter-Name Spalte -->
+          <div class="mitarbeiter-name-spalte">
+            {{ mitarbeiter.anzeigename }}
+          </div>
+
+          <!-- Datums-Zellen -->
+          <div
+            v-for="datum in alle_datum_zellen"
+            :key="`${mitarbeiter.id}-${datum.datum_string}`"
+            class="datums-zelle"
+            :class="{
+              'wochenende': datum.ist_wochenende,
+              'auswahlbar': !datum.ist_wochenende || content.wochenenden_anzeigen
+            }"
+            @mousedown="start_auswahl(mitarbeiter, datum)"
+            @mouseenter="erweitere_auswahl(datum)"
+            @mouseup="beende_auswahl"
+          >
+            <!-- Urlaubsbalken -->
+            <div
+              v-for="urlaub in get_urlaube_fuer_datum(mitarbeiter.id, datum.datum_string)"
+              :key="urlaub.id"
+              class="urlaubsbalken"
+              :style="get_urlaubsbalken_style(urlaub, datum.datum_string)"
+              @click.stop="urlaub_geklickt(urlaub, mitarbeiter)"
+            >
+              <span v-if="ist_start_datum(urlaub, datum.datum_string)" class="urlaub-label">
+                {{ get_urlaub_typ_label(urlaub.typ) }}
+              </span>
+            </div>
+
+            <!-- Auswahlmarkierung -->
+            <div
+              v-if="ist_zelle_ausgewaehlt(mitarbeiter.id, datum.datum_string)"
+              class="auswahl-overlay"
+            ></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  props: {
+    content: { type: Object, required: true },
+  },
+  emits: ['trigger-event'],
+  data() {
+    return {
+      aktuelles_startdatum: null,
+      auswahl_aktiv: false,
+      auswahl_mitarbeiter: null,
+      auswahl_start_datum: null,
+      auswahl_end_datum: null,
+    };
+  },
+  computed: {
+    translations() {
+      const lang = this.content?.sprache || 'de-DE';
+      const map = {
+        'de-DE': {
+          previous: 'Vorheriger',
+          next: 'Nächster',
+          urlaub: 'Urlaub',
+          krank: 'Krank',
+          geschaeftsreise: 'Geschäftsreise',
+          fortbildung: 'Fortbildung',
+          months: ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'],
+          days: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
+        },
+        'en-US': {
+          previous: 'Previous',
+          next: 'Next',
+          urlaub: 'Vacation',
+          krank: 'Sick',
+          geschaeftsreise: 'Business Trip',
+          fortbildung: 'Training',
+          months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+          days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+        }
+      };
+      return map[lang] || map['de-DE'];
+    },
+
+    verarbeitete_mitarbeiter() {
+      const liste = this.content?.benutzer_liste || [];
+      return liste.map(m => ({
+        id: m.id || `m-${Date.now()}-${Math.random()}`,
+        email: m.email || 'Unbekannt',
+        anzeigename: m.email || 'Unbekannt',
+        urlaube: m.urlaube || [],
+        original: m
+      }));
+    },
+
+    verarbeitete_urlaube() {
+      const urlaube = this.content?.urlaubsdaten || [];
+      return urlaube.map(u => ({
+        id: u.id || `u-${Date.now()}-${Math.random()}`,
+        benutzer_id: u.benutzer_id,
+        startdatum: u.startdatum,
+        enddatum: u.enddatum,
+        typ: u.typ || 'urlaub',
+        status: u.status || 'ausstehend',
+        original: u
+      }));
+    },
+
+    alle_urlaube() {
+      const ergebnis = [];
+      this.verarbeitete_mitarbeiter.forEach(m => {
+        if (Array.isArray(m.urlaube) && m.urlaube.length > 0) {
+          m.urlaube.forEach(u => {
+            ergebnis.push({
+              id: u.id || `n-${Date.now()}-${Math.random()}`,
+              benutzer_id: m.id,
+              startdatum: u.startdatum,
+              enddatum: u.enddatum,
+              typ: u.typ || 'urlaub',
+              status: u.status || 'ausstehend',
+              original: u
+            });
+          });
+        }
+      });
+      this.verarbeitete_urlaube.forEach(u => ergebnis.push(u));
+      return ergebnis;
+    },
+
+    alle_datum_zellen() {
+      const start = this.parse_datum(this.aktuelles_startdatum);
+      if (!start) return [];
+
+      const anzahl = this.content?.anzahl_monate || 3;
+      const zellen = [];
+      const end_date = new Date(start);
+      end_date.setMonth(end_date.getMonth() + anzahl);
+
+      let current = new Date(start);
+      while (current < end_date) {
+        const ist_wochenende = current.getDay() === 0 || current.getDay() === 6;
+        if (!ist_wochenende || this.content?.wochenenden_anzeigen) {
+          zellen.push({
+            datum_string: this.format_datum(current),
+            tag_name: this.translations.days[current.getDay()],
+            tag_nummer: current.getDate(),
+            ist_wochenende
+          });
+        }
+        current.setDate(current.getDate() + 1);
+      }
+      return zellen;
+    },
+
+    aktueller_zeitraum_text() {
+      const start = this.parse_datum(this.aktuelles_startdatum);
+      if (!start) return '';
+      const anzahl = this.content?.anzahl_monate || 3;
+      const end = new Date(start);
+      end.setMonth(end.getMonth() + anzahl - 1);
+      const sm = this.translations.months[start.getMonth()];
+      const em = this.translations.months[end.getMonth()];
+      if (start.getMonth() === end.getMonth()) return `${sm} ${start.getFullYear()}`;
+      return `${sm} - ${em} ${start.getFullYear()}`;
+    },
+
+    dynamicStyles() {
+      return {
+        '--hintergrundfarbe': this.content?.hintergrundfarbe || '#ffffff',
+        '--kopfzeile-hintergrund': this.content?.kopfzeile_hintergrundfarbe || '#f8f9fa',
+        '--navigation-hintergrund': this.content?.navigation_hintergrundfarbe || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        '--navigation-textfarbe': this.content?.navigation_textfarbe || '#ffffff',
+        '--rahmen-radius': this.content?.rahmen_radius || '4px',
+        '--header-textfarbe': this.content?.header_textfarbe || '#333333',
+        '--header-schriftgroesse': this.content?.header_schriftgroesse || '14px',
+        '--header-hoehe': this.content?.header_hoehe || '60px',
+        '--mitarbeiter-name-breite': this.content?.mitarbeiter_name_breite || '200px',
+        '--datum-zelle-breite': this.content?.datum_zelle_breite || '40px',
+        '--zeilen-hoehe': this.content?.zeilen_hoehe || '50px',
+        '--eingabefeld-hoehe': this.content?.eingabefeld_hoehe || '32px',
+        '--eingabefeld-breite': this.content?.eingabefeld_breite || '100%',
+      };
+    },
+  },
+  methods: {
+    parse_datum(s) {
+      if (!s) return null;
+      const p = s.split('-');
+      if (p.length !== 3) return null;
+      return new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2]));
+    },
+    format_datum(d) {
+      if (!d) return '';
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    },
+    get_urlaube_fuer_datum(mid, ds) {
+      return this.alle_urlaube.filter(u =>
+        u.benutzer_id == mid && u.startdatum && u.enddatum && ds >= u.startdatum && ds <= u.enddatum
+      );
+    },
+    ist_start_datum(u, ds) {
+      return u.startdatum === ds;
+    },
+    get_urlaub_farbe(s) {
+      const f = {
+        'genehmigt': this.content?.genehmigte_urlaub_farbe || '#51cf66',
+        'ausstehend': this.content?.ausstehende_urlaub_farbe || '#ffd43b',
+        'abgelehnt': this.content?.abgelehnte_urlaub_farbe || '#ff6b6b',
+        'krank': this.content?.krankmeldung_farbe || '#ff8787'
+      };
+      return f[s] || f['ausstehend'];
+    },
+    get_urlaub_typ_label(t) {
+      const l = {
+        'urlaub': this.translations.urlaub,
+        'krank': this.translations.krank,
+        'geschaeftsreise': this.translations.geschaeftsreise,
+        'fortbildung': this.translations.fortbildung
+      };
+      return l[t] || t;
+    },
+    get_urlaubsbalken_style(u, ds) {
+      const r = this.content?.urlaubsbalken_rahmen_radius || '4px';
+      const start = this.ist_start_datum(u, ds);
+      const ende = u.enddatum === ds;
+      return {
+        'background-color': this.get_urlaub_farbe(u.status),
+        'border-top-left-radius': start ? r : '0',
+        'border-bottom-left-radius': start ? r : '0',
+        'border-top-right-radius': ende ? r : '0',
+        'border-bottom-right-radius': ende ? r : '0',
+      };
+    },
+    start_auswahl(m, d) {
+      if (d.ist_wochenende && !this.content?.wochenenden_anzeigen) return;
+      this.auswahl_aktiv = true;
+      this.auswahl_mitarbeiter = m;
+      this.auswahl_start_datum = d.datum_string;
+      this.auswahl_end_datum = d.datum_string;
+    },
+    erweitere_auswahl(d) {
+      if (!this.auswahl_aktiv) return;
+      if (d.ist_wochenende && !this.content?.wochenenden_anzeigen) return;
+      this.auswahl_end_datum = d.datum_string;
+    },
+    beende_auswahl() {
+      if (!this.auswahl_aktiv) return;
+      const s = this.auswahl_start_datum;
+      const e = this.auswahl_end_datum;
+      const m = this.auswahl_mitarbeiter;
+      if (s && e && m) {
+        const [ss, es] = s <= e ? [s, e] : [e, s];
+        const sd = this.parse_datum(ss);
+        const ed = this.parse_datum(es);
+        const dc = Math.ceil((ed - sd) / (1000 * 60 * 60 * 24)) + 1;
+        this.$emit('trigger-event', {
+          name: 'bei_datumsbereich_auswahl',
+          event: {
+            employee: m.original,
+            employeeId: m.id,
+            employeeName: m.email,
+            startDate: ss,
+            endDate: es,
+            dayCount: dc
+          }
+        });
+      }
+      this.auswahl_aktiv = false;
+      this.auswahl_mitarbeiter = null;
+      this.auswahl_start_datum = null;
+      this.auswahl_end_datum = null;
+    },
+    ist_zelle_ausgewaehlt(mid, ds) {
+      if (!this.auswahl_aktiv) return false;
+      if (this.auswahl_mitarbeiter?.id !== mid) return false;
+      const s = this.auswahl_start_datum;
+      const e = this.auswahl_end_datum;
+      const [ss, es] = s <= e ? [s, e] : [e, s];
+      return ds >= ss && ds <= es;
+    },
+    urlaub_geklickt(u, m) {
+      this.$emit('trigger-event', {
+        name: 'bei_urlaub_klick',
+        event: {
+          vacation: u.original,
+          employee: m.original,
+          employeeId: m.id,
+          employeeName: m.email,
+          startDate: u.startdatum,
+          endDate: u.enddatum,
+          type: u.typ,
+          status: u.status
+        }
+      });
+    },
+    vorheriger_monat() {
+      const c = this.parse_datum(this.aktuelles_startdatum);
+      if (c) {
+        c.setMonth(c.getMonth() - 1);
+        this.aktuelles_startdatum = this.format_datum(c);
+      }
+    },
+    naechster_monat() {
+      const c = this.parse_datum(this.aktuelles_startdatum);
+      if (c) {
+        c.setMonth(c.getMonth() + 1);
+        this.aktuelles_startdatum = this.format_datum(c);
+      }
+    },
+  },
+  mounted() {
+    this.aktuelles_startdatum = this.content?.kalender_startdatum || this.format_datum(new Date());
+  },
+  watch: {
+    'content.kalender_startdatum'(v) {
+      if (v) this.aktuelles_startdatum = v;
+    }
+  }
+};
+</script>
+
+<style lang="scss" scoped>
+.urlaubsplaner {
+  background-color: var(--hintergrundfarbe);
+  border-radius: var(--rahmen-radius);
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  user-select: none;
+}
+
+.urlaubsplaner-navigation {
+  background: var(--navigation-hintergrund);
+  color: var(--navigation-textfarbe);
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nav-button {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: var(--navigation-textfarbe);
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+}
+
+.aktueller_zeitraum {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.kalender-container {
+  overflow-x: auto;
+}
+
+.kopfzeile {
+  display: flex;
+  background: var(--kopfzeile-hintergrund);
+  border-bottom: 2px solid #dee2e6;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: var(--header-hoehe);
+  color: var(--header-textfarbe);
+}
+
+.ecke {
+  min-width: var(--mitarbeiter-name-breite);
+  width: var(--mitarbeiter-name-breite);
+  border-right: 1px solid #dee2e6;
+}
+
+.datum-header {
+  min-width: var(--datum-zelle-breite);
+  flex: 1;
+  padding: 8px 4px;
+  text-align: center;
+  border-right: 1px solid #dee2e6;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: var(--header-textfarbe);
+
+  &.wochenende {
+    background-color: #f1f3f5;
+  }
+}
+
+.datum-tag {
+  font-size: var(--header-schriftgroesse);
+  color: var(--header-textfarbe);
+  opacity: 0.7;
+  text-transform: uppercase;
+}
+
+.datum-nummer {
+  font-size: var(--header-schriftgroesse);
+  font-weight: 600;
+  margin-top: 2px;
+  color: var(--header-textfarbe);
+}
+
+.kalender-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.mitarbeiter-zeile {
+  display: flex;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.mitarbeiter-name-spalte {
+  min-width: var(--mitarbeiter-name-breite);
+  width: var(--mitarbeiter-name-breite);
+  padding: 12px 8px;
+  font-weight: 600;
+  border-right: 1px solid #dee2e6;
+  background: var(--kopfzeile-hintergrund);
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+}
+
+.datums-zelle {
+  min-width: var(--datum-zelle-breite);
+  flex: 1;
+  min-height: var(--zeilen-hoehe);
+  border-right: 1px solid #dee2e6;
+  position: relative;
+  cursor: default;
+
+  &.wochenende {
+    background-color: #f8f9fa;
+  }
+
+  &.auswahlbar {
+    cursor: cell;
+  }
+}
+
+.urlaubsbalken {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 0;
+  right: 0;
+  height: var(--eingabefeld-hoehe);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 8px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.urlaub-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.auswahl-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(66, 153, 225, 0.2);
+  border: 2px dashed #4299e1;
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  .urlaubsplaner-navigation {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .aktueller_zeitraum {
+    order: -1;
+    font-size: 16px;
+  }
+  .nav-button {
+    width: 100%;
+  }
+  .mitarbeiter-name-spalte,
+  .datums-zelle {
+    min-width: 40px;
+  }
+}
+</style>
