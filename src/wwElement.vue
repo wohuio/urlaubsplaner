@@ -5,9 +5,23 @@
       <button @click="vorheriger_monat" class="nav-button">
         ◀ {{ translations.previous }}
       </button>
-      <div class="aktueller_zeitraum">
-        {{ aktueller_zeitraum_text }}
+
+      <div class="datum-selektoren">
+        <!-- Monat Dropdown -->
+        <select v-model="ausgewaehlter_monat" @change="zu_monat_springen" class="monat-select">
+          <option v-for="(monat, index) in translations.months" :key="index" :value="index">
+            {{ monat }}
+          </option>
+        </select>
+
+        <!-- Jahr Dropdown -->
+        <select v-model="ausgewaehltes_jahr" @change="zu_jahr_springen" class="jahr-select">
+          <option v-for="jahr in verfuegbare_jahre" :key="jahr" :value="jahr">
+            {{ jahr }}
+          </option>
+        </select>
       </div>
+
       <button @click="naechster_monat" class="nav-button">
         {{ translations.next }} ▶
       </button>
@@ -92,6 +106,8 @@ export default {
       auswahl_mitarbeiter: null,
       auswahl_start_datum: null,
       auswahl_end_datum: null,
+      ausgewaehlter_monat: new Date().getMonth(),
+      ausgewaehltes_jahr: new Date().getFullYear(),
     };
   },
   computed: {
@@ -229,6 +245,16 @@ export default {
       const em = this.translations.months[end.getMonth()];
       if (start.getMonth() === end.getMonth()) return `${sm} ${start.getFullYear()}`;
       return `${sm} - ${em} ${start.getFullYear()}`;
+    },
+
+    verfuegbare_jahre() {
+      // Generiert Jahre von aktuelles Jahr - 2 bis + 5
+      const aktuelles_jahr = new Date().getFullYear();
+      const jahre = [];
+      for (let jahr = aktuelles_jahr - 2; jahr <= aktuelles_jahr + 5; jahr++) {
+        jahre.push(jahr);
+      }
+      return jahre;
     },
 
     dynamicStyles() {
@@ -408,6 +434,7 @@ export default {
       if (c) {
         c.setMonth(c.getMonth() - 1);
         this.aktuelles_startdatum = this.format_datum(c);
+        this.update_selektoren();
       }
     },
     naechster_monat() {
@@ -415,11 +442,31 @@ export default {
       if (c) {
         c.setMonth(c.getMonth() + 1);
         this.aktuelles_startdatum = this.format_datum(c);
+        this.update_selektoren();
+      }
+    },
+    zu_monat_springen() {
+      // Springt zum ausgewählten Monat
+      const neues_datum = new Date(this.ausgewaehltes_jahr, this.ausgewaehlter_monat, 1);
+      this.aktuelles_startdatum = this.format_datum(neues_datum);
+    },
+    zu_jahr_springen() {
+      // Springt zum ausgewählten Jahr (gleicher Monat)
+      const neues_datum = new Date(this.ausgewaehltes_jahr, this.ausgewaehlter_monat, 1);
+      this.aktuelles_startdatum = this.format_datum(neues_datum);
+    },
+    update_selektoren() {
+      // Aktualisiert Monat/Jahr-Selektoren basierend auf aktuellem Datum
+      const c = this.parse_datum(this.aktuelles_startdatum);
+      if (c) {
+        this.ausgewaehlter_monat = c.getMonth();
+        this.ausgewaehltes_jahr = c.getFullYear();
       }
     },
   },
   mounted() {
     this.aktuelles_startdatum = this.content?.kalender_startdatum || this.format_datum(new Date());
+    this.update_selektoren();
   },
   watch: {
     'content.kalender_startdatum'(v) {
@@ -459,6 +506,43 @@ export default {
   &:hover {
     background: rgba(255, 255, 255, 0.3);
   }
+}
+
+.datum-selektoren {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.monat-select,
+.jahr-select {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #333;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 1);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+  }
+}
+
+.monat-select {
+  min-width: 120px;
+}
+
+.jahr-select {
+  min-width: 80px;
 }
 
 .aktueller_zeitraum {
